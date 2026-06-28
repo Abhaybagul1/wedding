@@ -1614,10 +1614,44 @@
     (function(){
 
       /* ══════════════════════════════════════════════════
+         ADMIN-ONLY GATE (simple frontend password)
+         NOTE: This is NOT secure against a determined attacker.
+         For real security, use backend auth (WP roles + REST).
+      ══════════════════════════════════════════════════ */
+      var ADMIN_PASSWORD = 'admin123'; // <-- CHANGE THIS
+      var ADMIN_STORAGE_KEY = 'ws_admin_authed_v1';
+
+      function adminAuthed(){
+        try { return localStorage.getItem(ADMIN_STORAGE_KEY) === '1'; } catch(e){ return false; }
+      }
+      function adminRequire(){
+        if(adminAuthed()) return true;
+        var p = window.prompt('Enter admin password to manage photos/videos:');
+        if(p === null) return false;
+        if(String(p) === String(ADMIN_PASSWORD)){
+          try { localStorage.setItem(ADMIN_STORAGE_KEY,'1'); } catch(e){}
+          return true;
+        }
+        alert('Wrong password');
+        return false;
+      }
+      function adminRequireOrHide(){
+        if(!adminAuthed()){
+          // Hide media manager trigger button
+          var btn = document.getElementById('mediaManagerBtn');
+          if(btn) btn.style.display = 'none';
+        }
+      }
+
+      /* Run ASAP */
+      document.addEventListener('DOMContentLoaded', adminRequireOrHide);
+
+      /* ══════════════════════════════════════════════════
          STORAGE HELPERS — all data lives in localStorage
          so deletes and adds survive page refresh
       ══════════════════════════════════════════════════ */
       var KEYS = { story:'ws_story', pre:'ws_pre', wedding:'ws_wedding', video:'ws_video' };
+
 
       var DEFAULT_STORY = [
         {id:1, year:'2020', event:'First meeting', desc:'Met through a shared best friend at college.', tag:'Mumbai', img:'https://images.unsplash.com/photo-1727430269557-15707dcd1d83?w=400&auto=format&fit=crop&q=60'},
@@ -1751,6 +1785,7 @@
       document.addEventListener('click', function(e){
         var btn = e.target.closest('[data-panel]');
         if(!btn || !btn.dataset.id) return;
+        if(!adminRequire()) return;
         e.stopPropagation();
         var id = Number(btn.dataset.id);
         var panel = btn.dataset.panel;
@@ -1771,6 +1806,7 @@
         }
       });
 
+
       /* ══════════════════════════════
          TAB SWITCH
       ══════════════════════════════ */
@@ -1785,6 +1821,7 @@
          ADD MODAL
       ══════════════════════════════ */
       window.gsOpenModal = function(target){
+        if(!adminRequire()) return;
         gsModalTarget = target;
         var titles = {story:'Add a chapter to your love story', prewedding:'Add a pre-wedding photo', wedding:'Add a wedding photo', video:'Add a wedding video'};
         document.getElementById('gsModalTitle').textContent = titles[target]||'Add media';
@@ -1800,6 +1837,7 @@
         }
         document.getElementById('gsModalBg').classList.add('open');
       };
+
       window.gsCloseModal = function(){
         document.getElementById('gsModalBg').classList.remove('open');
       };
@@ -1903,9 +1941,10 @@
         align-items: center;
         justify-content: center;
         transition: transform 0.2s;
-    " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+    " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" onclick="return (typeof adminRequire==='function') ? adminRequire() : true;">
         📷
     </button>
+
 
     <!-- MEDIA MANAGER PANEL -->
     <div id="mediaManagerPanel" style="
@@ -2202,8 +2241,10 @@
         }
 
         // ── Add Image ──
-        window.addImage = function() {
+      window.addImage = function() {
+            if(!adminRequire()) return;
             const urlInput = document.getElementById('newImageUrl');
+
             const fileInput = document.getElementById('newImageFile');
             const url = urlInput.value.trim();
 
@@ -2233,7 +2274,9 @@
 
         // ── Delete Image ──
         window._mmDeleteImage = function(id) {
+            if(!adminRequire()) return;
             albumImages = albumImages.filter(i => i.id != id);
+
             saveImages();
             renderAlbumToDOM();
             renderPanelImages();
@@ -2242,7 +2285,9 @@
 
         // ── Add Video ──
         window.addVideo = function() {
+            if(!adminRequire()) return;
             const urlInput = document.getElementById('newVideoUrl');
+
             const fileInput = document.getElementById('newVideoFile');
             const caption = document.getElementById('newVideoCaption').value.trim();
             const url = urlInput.value.trim();
@@ -2274,7 +2319,9 @@
 
         // ── Delete Video ──
         window._mmDeleteVideo = function(id) {
+            if(!adminRequire()) return;
             albumVideos = albumVideos.filter(v => v.id != id);
+
             saveVideos();
             renderVideosToDOM();
             renderPanelVideos();
